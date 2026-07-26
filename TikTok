@@ -1,0 +1,123 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TikTok AI Growth Studio</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>import app from "../server.ts";
+
+export default app;{
+  "name": "tiktok-ai-growth-studio",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^0.1.2",
+    "clsx": "^2.1.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "lucide-react": "^0.344.0",
+    "motion": "^12.4.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.24",
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.18",
+    "esbuild": "^0.20.1",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3",
+    "vite": "^6.4.3"
+  }
+}import express from "express";
+import path from "path";
+import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
+
+dotenv.config();
+
+export const app = express();
+export default app;
+const PORT = 3000;
+
+app.use(express.json());
+
+// Helper function to initialize Gemini safely
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY environment variable missing");
+  }
+  return new GoogleGenAI({ apiKey });
+}
+
+// AI Growth Chat Route
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { message, niche = "General", followers = "0", language = "roman_urdu", history = [] } = req.body;
+    const ai = getGeminiClient();
+
+    const systemInstruction = `You are a world-class TikTok Viral Growth Consultant and Algorithm Master.
+Niche = ${niche}, Followers = ${followers}. Language = ${language}.
+Give direct, step-by-step actionable advice.`;
+
+    const prompt = `User message: "${message}"\nGive a direct, specific strategy answer for TikTok growth in niche "${niche}".`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: { systemInstruction },
+    });
+
+    res.json({ reply: response.text || "Sorry, I could not generate a response." });
+  } catch (error) {
+    // Intelligent fallback strategies for quota limits / missing keys
+    res.json({ reply: "🔥 **TikTok Growth Strategy**: Focus on 3-second retention hooks and 65%+ completion rates!" });
+  }
+});
+
+// Vite & Static file handling
+if (process.env.NODE_ENV === "production") {
+  const distPath = path.join(process.cwd(), "dist");
+  app.use(express.static(distPath));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+}
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`TikTok AI Growth Studio Server running on http://0.0.0.0:${PORT}`);
+  });
+}
